@@ -161,7 +161,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ⚠️ Disclaimer
 
-This automation tool is for educational and personal use only. Users are responsible for:
+This automation tool is for educational and you are responsible for:
 - Complying with IRCTC Terms of Service
 - Using the tool responsibly and ethically
 - Not overwhelming IRCTC servers with excessive requests
