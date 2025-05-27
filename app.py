@@ -6,40 +6,34 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
-# --- Configure Chrome Options ---
 options = uc.ChromeOptions()
 
-# Core evasive arguments (kept for good measure, uc will prioritize if it has its own handling)
-options.add_argument("--disable-blink-features=AutomationControlled") # Hides navigator.webdriver (uc does this too)
-options.add_argument("--disable-infobars") # Disables "Chrome is being controlled by automated test software" bar
-options.add_argument("--disable-extensions") # Disables browser extensions
-options.add_argument("--no-sandbox") # Essential for many environments
-options.add_argument("--start-maximized") # Ensures it starts maximized
-options.add_argument("--incognito") # Ensures a clean session state
-options.add_argument("--disable-dev-shm-usage") # Overcomes limited resource problems (Linux, Docker)
-options.add_argument("--disable-browser-side-navigation") # Helps with certain navigation issues
-options.add_argument("--disable-gpu") # Can sometimes help with WebGL fingerprinting (may impact rendering)
-options.add_argument("--no-first-run") # Suppresses initial browser setup
-options.add_argument("--no-default-browser-check") # Suppresses "Make default browser" popups
-options.add_argument("--lang=en-US") # Set a specific language for consistency
-options.add_argument("--disable-background-networking") # Disables background network calls
+options.add_argument("--disable-blink-features=AutomationControlled")
+options.add_argument("--disable-infobars")
+options.add_argument("--disable-extensions")
+options.add_argument("--no-sandbox")
+options.add_argument("--start-maximized")
+options.add_argument("--incognito")
+options.add_argument("--disable-dev-shm-usage")
+options.add_argument("--disable-browser-side-navigation")
+options.add_argument("--disable-gpu")
+options.add_argument("--no-first-run")
+options.add_argument("--no-default-browser-check")
+options.add_argument("--lang=en-US")
+options.add_argument("--disable-background-networking")
 
-# Define a realistic User-Agent string
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 options.add_argument(f"user-agent={user_agent}")
 
-# Experimental options (WebDriver preferences)
 options.add_experimental_option("prefs", {
-    "profile.default_content_setting_values.notifications": 2, # Block notifications
-    "credentials_enable_service": False, # Disable password saving prompt
-    "profile.password_manager_enabled": False, # Disable password saving prompt
-    "autofill.profile_enabled": False # Disable autofill pop-ups
+    "profile.default_content_setting_values.notifications": 2,
+    "credentials_enable_service": False,
+    "profile.password_manager_enabled": False,
+    "autofill.profile_enabled": False
 })
 
 
-# --- Revised JavaScript Injections (Removed conflicting 'chrome' and 'webdriver' spoofs) ---
 stealth_js = """
-    // Spoof navigator.plugins, languages, mimetypes (less likely to conflict)
     Object.defineProperty(navigator, 'plugins', {
       get: () => [
         {name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer'},
@@ -58,30 +52,24 @@ stealth_js = """
       ]
     });
 
-    // Overwrite console.debug to prevent logging automation markers
-    // This is generally safe and helps clean up console output
     console.debug = () => {};
 
-    // Override MediaDevices.prototype.getUserMedia (to hide microphone/camera access attempts)
     Object.defineProperty(MediaDevices.prototype, 'getUserMedia', {
       get: () => async (constraints) => {
         throw new Error('NotAllowedError: Permission denied');
       }
     });
 
-    // Spoof battery status API
     Object.defineProperty(navigator, 'getBattery', {
       get: () => async () => ({ charging: true, chargingTime: 0, dischargingTime: Infinity, level: 1 })
     });
 
-    // Spoof Permission.query method
     const originalQuery = window.navigator.permissions.query;
     window.navigator.permissions.query = (parameters) =>
         (parameters.name === 'notifications' || parameters.name === 'geolocation') ?
         Promise.resolve({ state: Notification.permission === 'granted' ? 'granted' : 'denied' }) :
         originalQuery(parameters);
 
-    // Randomize getBoundingClientRect (subtle behavioral spoofing)
     const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
     Element.prototype.getBoundingClientRect = function() {
         const rect = originalGetBoundingClientRect.call(this);
@@ -97,18 +85,15 @@ stealth_js = """
         };
     };
 
-    // Introduce randomized delays to click events
     const originalClick = Element.prototype.click;
     Element.prototype.click = function() {
-        const delay = Math.random() * 100 + 50; // 50-150ms delay
+        const delay = Math.random() * 100 + 50;
         setTimeout(() => originalClick.call(this), delay);
     };
 
-    // Console marker for confirmation that this JS is running
     console.log('undetected chromedriver 1337!');
 """
 
-# --- Initialize the Chrome WebDriver ---
 print("Initializing undetected_chromedriver with revised evasive options (minimal JS conflicts)...")
 try:
     driver = uc.Chrome(options=options)
@@ -118,19 +103,15 @@ except Exception as e:
     print("Please ensure you have Chrome browser installed and the library is up-to-date.")
     exit()
 
-# Inject the stealth JavaScript
 print("Injecting minimalist stealth JavaScript...")
 driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": stealth_js})
 
 
-# Open the IRCTC website
 print("Navigating to IRCTC website...")
 driver.get('https://www.irctc.co.in/nget/train-search')
 
-# Give some initial time for the page to fully load
 sleep(random.uniform(5, 10))
 
-# --- Attempt to dismiss notification pop-up if it appears ---
 print("Checking for and attempting to dismiss notification pop-up...")
 try:
     block_notifications_button = WebDriverWait(driver, 7).until(
@@ -143,7 +124,6 @@ except Exception as e:
     print(f"Notification pop-up 'Block' button not found or already dismissed: {e}")
     pass
 
-# --- Step 1: Click Login button on main page ---
 print("Attempting to click the 'LOGIN' button...")
 try:
     login_button = WebDriverWait(driver, 30).until(
@@ -159,14 +139,12 @@ except Exception as e:
     exit()
 
 
-# --- Step 2: Enter Login Credentials in Pop-up ---
 print("Attempting to enter login credentials into the pop-up...")
 try:
     username_field = WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[2]/input'))
     )
-    # Simulate human typing with random delays
-    for char in 'rajvishwakarma303': # <<< IMPORTANT: Replace 'your_username_here'
+    for char in 'rajvishwakarma303':
         username_field.send_keys(char)
         sleep(random.uniform(0.05, 0.2))
     print("Username entered.")
@@ -175,8 +153,7 @@ try:
     password_field = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[3]/input'))
     )
-    # Simulate human typing with random delays
-    for char in 'Raj@321#': # <<< IMPORTANT: Replace 'your_password_here'
+    for char in 'Raj@321#':
         password_field.send_keys(char)
         sleep(random.uniform(0.05, 0.2))
     print("Password entered.")
@@ -190,7 +167,7 @@ try:
     print("Please manually enter the CAPTCHA and click 'Sign In' in the browser window.")
     print("If new CAPTCHAs appear after that, please solve them manually as well.")
     print("The browser will remain open for your manual interaction.")
-    sleep(3600) # Keep the browser open for a very long time (1 hour) for manual input
+    sleep(3600)
 
 except Exception as e:
     print(f"Error finding login fields or CAPTCHA field: {e}")
