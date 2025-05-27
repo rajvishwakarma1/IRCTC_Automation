@@ -14,7 +14,7 @@ This repository contains a Python-based automation tool designed to assist with 
 
 ## 📺 Demo
 
-You can watch a demo of the automation tool in action here: <https://youtu.be/rV3QRSc5YCw>
+You can watch a demo of the automation tool in action here: <https://youtu.be/TPCkSHVbVgE>
 
 ## 🧠 My Approach
 
