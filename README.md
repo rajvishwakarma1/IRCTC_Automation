@@ -114,6 +114,36 @@ This tool employs several techniques to minimize the chances of being detected b
 
   * **Behavioral Spoofing**: Subtle random variations are introduced to `Element.prototype.getBoundingClientRect` (for element position readings) and `Element.prototype.click` (for click event delays) to make interactions less robotic.
 
+## ❌ Challenges and Limitations (Why Full Automation Was Not Achieved)
+
+Despite employing extensive evasion techniques, full automation of the IRCTC login process proved unfeasible due to the highly sophisticated anti-bot measures implemented by the website. Key challenges encountered include:
+
+* **Persistent CAPTCHA Chaining:** IRCTC's system actively detects automated browser sessions. Upon detecting automation, it frequently presents multiple, dynamic CAPTCHAs in a continuous loop. These CAPTCHAs are designed to be human-solvable and cannot be programmatically bypassed by automation tools. This behavior is a primary defense mechanism to prevent non-human logins.
+
+* **Server-Side Blocking (504 Gateway Timeout):** Even when client-side browser fingerprints were effectively masked using `undetected_chromedriver` and custom JavaScript injections, the IRCTC server would often respond with `504 Gateway Timeout` errors. This indicates that the server-side anti-bot system was identifying and blocking the automated requests at a network or load-balancer level, preventing the requests from even reaching the main application logic. The fact that manual login attempts from the same machine and network were successful confirmed that these 504 errors were a direct response to detected automation, rather than general server downtime.
+
+* **Dynamic Website Behavior:** IRCTC's website frequently updates its structure and security protocols, making it a continuous challenge to maintain consistent automation without constant adaptation of XPaths and evasion strategies.
+
+These combined factors demonstrate that IRCTC is highly effective at preventing automated logins, necessitating manual intervention for the CAPTCHA and final login steps.
+
+## ⚠️ Why This Tool Cannot Be Run Directly in Canvas
+
+This Python automation tool, which uses Selenium WebDriver to control a web browser (Google Chrome), **cannot be executed directly within the Canvas environment**. This limitation stems from the fundamental architecture of web automation and the nature of the Canvas execution environment:
+
+* **No Graphical User Interface (GUI):** Selenium WebDriver requires a full graphical desktop environment to launch and control a web browser like Chrome. The Canvas environment, being a server-side execution platform, operates in a headless (non-graphical) manner. It does not have a visible desktop, browser installation, or the necessary display server to render a browser window.
+
+* **Browser and Driver Dependencies:** To run this script, you need:
+
+    * A locally installed Google Chrome browser.
+
+    * A compatible `chromedriver` executable (which `undetected_chromedriver` often manages for you, but still requires a local browser).
+
+    * The Canvas environment does not provide or allow the installation and execution of these external browser applications and their drivers.
+
+* **Security and Isolation:** The Canvas environment is a sandboxed execution space designed for isolated code execution. It's built to run Python scripts that perform computational tasks, interact with APIs (like Google's services), or generate content. It is not designed to launch or interact with external applications like web browsers on a user's local machine or within its own virtualized environment for security and resource management reasons.
+
+Therefore, this tool is designed to be run **locally on your computer** where you have Google Chrome and the necessary Python environment set up, as demonstrated in the "Run Instructions" section.
+
 ## ⏱ Time Spent
 
 Approximately 6+ hours were dedicated to the development and refinement of this tool, primarily focused on addressing anti-bot detection and ensuring reliable initial form filling.
@@ -131,3 +161,16 @@ Approximately 6+ hours were dedicated to the development and refinement of this 
 ## 📜 Run Instructions
 
 To execute this automation tool, follow these steps:
+
+```bash
+# Clone the repository (replace <repository-url> with your actual repo URL)
+git clone <repository-url>
+cd irctc-automation
+
+# Install dependencies
+pip install -r requirements.txt
+# Ensure you also have undetected_chromedriver installed:
+pip install undetected_chromedriver
+
+# Run the automation
+python main.py
