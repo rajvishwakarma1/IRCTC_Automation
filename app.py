@@ -144,7 +144,7 @@ try:
     username_field = WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[2]/input'))
     )
-    for char in 'rajvishwakarma303':
+    for char in 'Enter Username Here':
         username_field.send_keys(char)
         sleep(random.uniform(0.05, 0.2))
     print("Username entered.")
@@ -153,7 +153,7 @@ try:
     password_field = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[3]/input'))
     )
-    for char in 'Raj@321#':
+    for char in 'Enter Password Here':
         password_field.send_keys(char)
         sleep(random.uniform(0.05, 0.2))
     print("Password entered.")
