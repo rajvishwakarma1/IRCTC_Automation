@@ -3,7 +3,7 @@
 ## 📅 Project Timeline Overview
 **Total Development Time**: 6 hours  
 **Date**: May 27, 2025  
-**Developer**: [Your Name]  
+**Developer**: Raj Vishwakarma  
 **Project**: IRCTC Login Automation MVP  
 
 ---
@@ -14,25 +14,18 @@
 **Time Block**: 11:00 AM - 12:00 PM (60 minutes)
 
 #### Activities Breakdown
-- **11:00 - 11:15 AM** (15 min): Manual IRCTC website exploration
   - Analyzed login flow manually
   - Identified CAPTCHA placement and type
   - Noted dynamic elements and loading patterns
   - Documented user journey from landing to booking page
-
-- **11:15 - 11:30 AM** (15 min): Python environment setup
   - Verified Python 3.8+ installation
   - Created virtual environment: `python -m venv irctc_env`
   - Activated environment and updated pip
   - Created requirements.txt with initial dependencies
-
-- **11:30 - 11:45 AM** (15 min): Selenium WebDriver installation
   - Installed selenium: `pip install selenium==4.15.0`
   - Downloaded ChromeDriver compatible with Chrome v119
   - Tested basic WebDriver initialization
   - Verified browser automation capabilities
-
-- **11:45 - 12:00 PM** (15 min): Initial automation testing
   - Created basic script structure
   - Tested IRCTC website navigation
   - Confirmed dynamic content loading behavior
