@@ -10,13 +10,20 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-# Logging setup
-def log_event(event_type, message, extra_data=None):
+# --- Logging Setup ---
+def get_ip():
+    try:
+        return socket.gethostbyname(socket.gethostname())
+    except:
+        return "unknown"
+
+def log_event(event, message, extra_data=None):
     log_entry = {
-        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
-        "event_type": event_type,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "event": event,
         "message": message,
-        "ip_address": socket.gethostbyname(socket.gethostname())
+        "ip": get_ip(),
+        "profile_type": "default"
     }
     if extra_data:
         log_entry.update(extra_data)
@@ -24,15 +31,16 @@ def log_event(event_type, message, extra_data=None):
         f.write(json.dumps(log_entry) + "\n")
 
 def handle_exit(signum, frame):
-    log_event("exit", "Script terminated manually or browser closed by user.")
-    print("\n--- Session Terminated by User or System Signal ---")
-    print("------------------------")
+    log_event("session_terminated", "Script terminated by user or signal.", {"reason": "user_closed"})
+    print("\n--- Session Terminated ---")
     sys.exit(0)
 
 signal.signal(signal.SIGINT, handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
 
+# --- Begin Automation ---
 print("------------------------")
+log_event("session_start", "Session started.")
 
 options = uc.ChromeOptions()
 options.add_argument("--disable-blink-features=AutomationControlled")
@@ -123,9 +131,9 @@ stealth_js = """
 print("Initializing undetected_chromedriver...")
 try:
     driver = uc.Chrome(options=options)
-    log_event("driver_init", "ChromeDriver initialized successfully.")
+    log_event("driver_init", "ChromeDriver initialized.")
 except Exception as e:
-    log_event("driver_error", f"Error initializing ChromeDriver: {e}")
+    log_event("driver_error", f"Failed to initialize ChromeDriver: {e}")
     exit()
 
 print("Injecting stealth JavaScript...")
@@ -133,7 +141,7 @@ driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": steal
 
 print("Navigating to IRCTC website...")
 driver.get('https://www.irctc.co.in/nget/train-search')
-log_event("navigate", "Navigated to IRCTC website.")
+log_event("navigate", "Navigated to IRCTC.")
 
 sleep(random.uniform(5, 10))
 
@@ -145,7 +153,7 @@ try:
     driver.execute_script("arguments[0].click();", block_btn)
     log_event("notification_dismissed", "Notification pop-up dismissed.")
 except Exception as e:
-    log_event("notification_skip", f"No notification pop-up found or already dismissed: {e}")
+    log_event("notification_skip", f"Popup not found or already dismissed: {e}")
 
 print("Attempting to click LOGIN button...")
 try:
@@ -181,7 +189,7 @@ try:
     captcha_input_field = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[5]/div/app-captcha/div/div/input'))
     )
-    log_event("captcha_displayed", "CAPTCHA field detected. Awaiting manual fill.")
+    log_event("captcha_detected", "CAPTCHA field detected. Awaiting manual fill.")
 
     print("\n--- Automation complete. Username and Password entered. ---")
     print("Please manually enter the CAPTCHA and click 'Sign In' in the browser window.")
@@ -189,7 +197,9 @@ try:
     while True:
         input("\nAfter filling each CAPTCHA and clicking Sign In, press Enter here to log the event.")
         log_event("captcha_filled", "CAPTCHA submitted manually by user.")
+
 except Exception as e:
-    log_event("form_fill_error", f"Login form fill failed: {e}")
+    log_event("form_fill_error", f"Error during form fill: {e}")
     driver.quit()
+    log_event("session_terminated", "Session ended with error.", {"reason": "form_fill_error"})
     exit()
