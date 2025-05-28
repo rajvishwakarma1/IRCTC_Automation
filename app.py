@@ -1,9 +1,26 @@
 import undetected_chromedriver as uc
 from time import sleep
 import random
+import json
+from datetime import datetime
+import socket
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+
+def log_event(event_type, status, details=None):
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "event_type": event_type,
+        "status": status,
+        "details": details,
+        "hostname": socket.gethostname(),
+        "session_type": "incognito",
+        "user_agent": user_agent
+    }
+    with open("session_logs.jsonl", "a") as logfile:
+        logfile.write(json.dumps(log_entry) + "\n")
 
 
 options = uc.ChromeOptions()
@@ -97,8 +114,10 @@ stealth_js = """
 print("Initializing undetected_chromedriver with revised evasive options (minimal JS conflicts)...")
 try:
     driver = uc.Chrome(options=options)
+    log_event("driver_launch", "success")
     print("undetected_chromedriver initialized successfully.")
 except Exception as e:
+    log_event("driver_launch", "failure", str(e))
     print(f"Error initializing undetected_chromedriver: {e}")
     print("Please ensure you have Chrome browser installed and the library is up-to-date.")
     exit()
@@ -106,10 +125,9 @@ except Exception as e:
 print("Injecting minimalist stealth JavaScript...")
 driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": stealth_js})
 
-
 print("Navigating to IRCTC website...")
 driver.get('https://www.irctc.co.in/nget/train-search')
-
+log_event("navigate_homepage", "success")
 sleep(random.uniform(5, 10))
 
 print("Checking for and attempting to dismiss notification pop-up...")
@@ -130,14 +148,15 @@ try:
         EC.element_to_be_clickable((By.XPATH, "//a[@class='search_btn loginText ng-star-inserted']"))
     )
     driver.execute_script("arguments[0].click();", login_button)
+    log_event("login_button_click", "success")
     print("Main 'LOGIN' button clicked using JavaScript.")
     sleep(random.uniform(6, 9))
 except Exception as e:
+    log_event("login_button_click", "failure", str(e))
     print(f"Error clicking main 'LOGIN' button: {e}")
     print("This might be due to page loading issues or a change in the button's XPath.")
     driver.quit()
     exit()
-
 
 print("Attempting to enter login credentials into the pop-up...")
 try:
@@ -162,6 +181,7 @@ try:
     captcha_input_field = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[5]/div/app-captcha/div/div/input'))
     )
+    log_event("credentials_input", "success")
     print("\n--- Automation complete. Username and Password entered. ---")
     print("Due to IRCTC's security, you will STILL need to manually solve ALL CAPTCHAs.")
     print("Please manually enter the CAPTCHA and click 'Sign In' in the browser window.")
@@ -170,6 +190,7 @@ try:
     sleep(3600)
 
 except Exception as e:
+    log_event("credentials_input", "failure", str(e))
     print(f"Error finding login fields or CAPTCHA field: {e}")
     print("This might be due to page loading issues or changes in element XPaths.")
     driver.quit()
