@@ -2,29 +2,39 @@ import undetected_chromedriver as uc
 from time import sleep
 import random
 import json
-from datetime import datetime
+import datetime
 import socket
+import signal
+import sys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-
-def log_event(event_type, status, details=None):
+# Logging setup
+def log_event(event_type, message, extra_data=None):
     log_entry = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
         "event_type": event_type,
-        "status": status,
-        "details": details,
-        "hostname": socket.gethostname(),
-        "session_type": "incognito",
-        "user_agent": user_agent
+        "message": message,
+        "ip_address": socket.gethostbyname(socket.gethostname())
     }
-    with open("session_logs.jsonl", "a") as logfile:
-        logfile.write(json.dumps(log_entry) + "\n")
+    if extra_data:
+        log_entry.update(extra_data)
+    with open("session_logs.jsonl", "a") as f:
+        f.write(json.dumps(log_entry) + "\n")
 
+def handle_exit(signum, frame):
+    log_event("exit", "Script terminated manually or browser closed by user.")
+    print("\n--- Session Terminated by User or System Signal ---")
+    print("------------------------")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
+
+print("------------------------")
 
 options = uc.ChromeOptions()
-
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--disable-infobars")
 options.add_argument("--disable-extensions")
@@ -48,7 +58,6 @@ options.add_experimental_option("prefs", {
     "profile.password_manager_enabled": False,
     "autofill.profile_enabled": False
 })
-
 
 stealth_js = """
     Object.defineProperty(navigator, 'plugins', {
@@ -111,54 +120,47 @@ stealth_js = """
     console.log('undetected chromedriver 1337!');
 """
 
-print("Initializing undetected_chromedriver with revised evasive options (minimal JS conflicts)...")
+print("Initializing undetected_chromedriver...")
 try:
     driver = uc.Chrome(options=options)
-    log_event("driver_launch", "success")
-    print("undetected_chromedriver initialized successfully.")
+    log_event("driver_init", "ChromeDriver initialized successfully.")
 except Exception as e:
-    log_event("driver_launch", "failure", str(e))
-    print(f"Error initializing undetected_chromedriver: {e}")
-    print("Please ensure you have Chrome browser installed and the library is up-to-date.")
+    log_event("driver_error", f"Error initializing ChromeDriver: {e}")
     exit()
 
-print("Injecting minimalist stealth JavaScript...")
+print("Injecting stealth JavaScript...")
 driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": stealth_js})
 
 print("Navigating to IRCTC website...")
 driver.get('https://www.irctc.co.in/nget/train-search')
-log_event("navigate_homepage", "success")
+log_event("navigate", "Navigated to IRCTC website.")
+
 sleep(random.uniform(5, 10))
 
-print("Checking for and attempting to dismiss notification pop-up...")
+print("Checking for notification pop-up...")
 try:
-    block_notifications_button = WebDriverWait(driver, 7).until(
+    block_btn = WebDriverWait(driver, 7).until(
         EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Block') or contains(@aria-label, 'Block') or contains(@class, 'mat-button') and contains(., 'No Thanks')]"))
     )
-    driver.execute_script("arguments[0].click();", block_notifications_button)
-    print("Notification pop-up 'Block' button clicked.")
-    sleep(random.uniform(1, 2))
+    driver.execute_script("arguments[0].click();", block_btn)
+    log_event("notification_dismissed", "Notification pop-up dismissed.")
 except Exception as e:
-    print(f"Notification pop-up 'Block' button not found or already dismissed: {e}")
-    pass
+    log_event("notification_skip", f"No notification pop-up found or already dismissed: {e}")
 
-print("Attempting to click the 'LOGIN' button...")
+print("Attempting to click LOGIN button...")
 try:
     login_button = WebDriverWait(driver, 30).until(
         EC.element_to_be_clickable((By.XPATH, "//a[@class='search_btn loginText ng-star-inserted']"))
     )
     driver.execute_script("arguments[0].click();", login_button)
-    log_event("login_button_click", "success")
-    print("Main 'LOGIN' button clicked using JavaScript.")
+    log_event("login_click", "Login button clicked.")
     sleep(random.uniform(6, 9))
 except Exception as e:
-    log_event("login_button_click", "failure", str(e))
-    print(f"Error clicking main 'LOGIN' button: {e}")
-    print("This might be due to page loading issues or a change in the button's XPath.")
+    log_event("login_click_fail", f"Login button click failed: {e}")
     driver.quit()
     exit()
 
-print("Attempting to enter login credentials into the pop-up...")
+print("Filling in login form...")
 try:
     username_field = WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[2]/input'))
@@ -166,8 +168,7 @@ try:
     for char in 'Enter Username Here':
         username_field.send_keys(char)
         sleep(random.uniform(0.05, 0.2))
-    print("Username entered.")
-    sleep(random.uniform(0.5, 1.5))
+    log_event("username_entered", "Username filled.")
 
     password_field = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[3]/input'))
@@ -175,23 +176,20 @@ try:
     for char in 'Enter Password Here':
         password_field.send_keys(char)
         sleep(random.uniform(0.05, 0.2))
-    print("Password entered.")
-    sleep(random.uniform(0.5, 1.5))
+    log_event("password_entered", "Password filled.")
 
     captcha_input_field = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[5]/div/app-captcha/div/div/input'))
     )
-    log_event("credentials_input", "success")
-    print("\n--- Automation complete. Username and Password entered. ---")
-    print("Due to IRCTC's security, you will STILL need to manually solve ALL CAPTCHAs.")
-    print("Please manually enter the CAPTCHA and click 'Sign In' in the browser window.")
-    print("If new CAPTCHAs appear after that, please solve them manually as well.")
-    print("The browser will remain open for your manual interaction.")
-    sleep(3600)
+    log_event("captcha_displayed", "CAPTCHA field detected. Awaiting manual fill.")
 
+    print("\n--- Automation complete. Username and Password entered. ---")
+    print("Please manually enter the CAPTCHA and click 'Sign In' in the browser window.")
+
+    while True:
+        input("\nAfter filling each CAPTCHA and clicking Sign In, press Enter here to log the event.")
+        log_event("captcha_filled", "CAPTCHA submitted manually by user.")
 except Exception as e:
-    log_event("credentials_input", "failure", str(e))
-    print(f"Error finding login fields or CAPTCHA field: {e}")
-    print("This might be due to page loading issues or changes in element XPaths.")
+    log_event("form_fill_error", f"Login form fill failed: {e}")
     driver.quit()
     exit()
