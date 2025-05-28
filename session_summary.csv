@@ -1,0 +1,4 @@
+Session Group,Total Sessions,User Closed Early,CAPTCHA Prompted,CAPTCHA Filled,CAPTCHA Loops,CAPTCHA Solve Rate (%),CAPTCHA Loop Rate (%),Avg. Session Duration (sec)
+unknown | unknown,0,0,0,5,0,0.0,0.0,0.00
+106.219.174.195 | unknown,1,0,0,6,0,0.0,0.0,40.12
+192.168.1.7 | default,1,1,1,8,0,800.0,0.0,59.25

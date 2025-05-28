@@ -1,4 +1,5 @@
 import json
+import csv
 from collections import defaultdict
 from datetime import datetime
 
@@ -95,6 +96,34 @@ def print_summary(stats):
         print(f"  Avg. Session Duration: {avg_duration:.2f} sec")
         print("-" * 40)
 
+def export_to_csv(stats, filename="session_summary.csv"):
+    with open(filename, mode="w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([
+            "Session Group", "Total Sessions", "User Closed Early",
+            "CAPTCHA Prompted", "CAPTCHA Filled", "CAPTCHA Loops",
+            "CAPTCHA Solve Rate (%)", "CAPTCHA Loop Rate (%)", "Avg. Session Duration (sec)"
+        ])
+
+        for key, data in stats.items():
+            duration_list = data.get("session_durations", [])
+            avg_duration = sum(duration_list) / len(duration_list) if duration_list else 0
+
+            captcha_prompted = data['captcha_prompted']
+            captcha_filled = data['captcha_filled']
+            captcha_loops = data['captcha_loops']
+
+            solve_rate = (captcha_filled / captcha_prompted * 100) if captcha_prompted else 0
+            loop_rate = (captcha_loops / captcha_prompted * 100) if captcha_prompted else 0
+
+            writer.writerow([
+                key, data['total_sessions'], data['user_closed'],
+                captcha_prompted, captcha_filled, captcha_loops,
+                f"{solve_rate:.1f}", f"{loop_rate:.1f}", f"{avg_duration:.2f}"
+            ])
+    print(f"\n✅ Exported summary to: {filename}")
+
 if __name__ == "__main__":
     stats = parse_logs()
     print_summary(stats)
+    export_to_csv(stats)

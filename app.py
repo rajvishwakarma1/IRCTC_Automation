@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-# --- Logging Setup ---
+#Logging Setup-
 def get_ip():
     try:
         return socket.gethostbyname(socket.gethostname())
@@ -38,7 +38,7 @@ def handle_exit(signum, frame):
 signal.signal(signal.SIGINT, handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
 
-# --- Begin Automation ---
+#Begin Automation
 print("------------------------")
 log_event("session_start", "Session started.")
 
