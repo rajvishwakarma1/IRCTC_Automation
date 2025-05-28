@@ -114,6 +114,32 @@ This tool employs several techniques to minimize the chances of being detected b
 
   * **Behavioral Spoofing**: Subtle random variations are introduced to `Element.prototype.getBoundingClientRect` (for element position readings) and `Element.prototype.click` (for click event delays) to make interactions less robotic.
 
+## 🗂 Logging & Monitoring
+
+The tool now supports **session logging** in a structured `.jsonl` format (`session_logs.jsonl`) with these key features:
+
+### ✅ Logged Events
+* Driver/browser launch and exit
+* Navigation to IRCTC
+* Login modal interaction
+* Username/password input
+* Manual CAPTCHA fill events
+* Browser closure (user-initiated or via script)
+* IP address of the session
+
+### 📌 Log Format
+Each entry includes:
+
+```json
+{ "timestamp": "2025-05-28T12:34:56", "event": "captcha_filled", "message": "User manually filled captcha", "ip": "123.45.67.89" }
+```
+
+### 📎 Additional Features
+* IP detection for each session
+* Detects if the user closes the browser manually
+* Logs every time the CAPTCHA is filled
+* Adds `------------------------` line between sessions for clarity
+
 ## ❌ Challenges and Limitations (Why Full Automation Was Not Achieved)
 
 Despite employing extensive evasion techniques, full automation of the IRCTC login process proved unfeasible due to the highly sophisticated anti-bot measures implemented by the website. Key challenges encountered include:
@@ -125,24 +151,6 @@ Despite employing extensive evasion techniques, full automation of the IRCTC log
 * **Dynamic Website Behavior:** IRCTC's website frequently updates its structure and security protocols, making it a continuous challenge to maintain consistent automation without constant adaptation of XPaths and evasion strategies.
 
 These combined factors demonstrate that IRCTC is highly effective at preventing automated logins, necessitating manual intervention for the CAPTCHA and final login steps.
-
-## ⚠️ Why This Tool Cannot Be Run Directly in Canvas
-
-This Python automation tool, which uses Selenium WebDriver to control a web browser (Google Chrome), **cannot be executed directly within the Canvas environment**. This limitation stems from the fundamental architecture of web automation and the nature of the Canvas execution environment:
-
-* **No Graphical User Interface (GUI):** Selenium WebDriver requires a full graphical desktop environment to launch and control a web browser like Chrome. The Canvas environment, being a server-side execution platform, operates in a headless (non-graphical) manner. It does not have a visible desktop, browser installation, or the necessary display server to render a browser window.
-
-* **Browser and Driver Dependencies:** To run this script, you need:
-
-    * A locally installed Google Chrome browser.
-
-    * A compatible `chromedriver` executable (which `undetected_chromedriver` often manages for you, but still requires a local browser).
-
-    * The Canvas environment does not provide or allow the installation and execution of these external browser applications and their drivers.
-
-* **Security and Isolation:** The Canvas environment is a sandboxed execution space designed for isolated code execution. It's built to run Python scripts that perform computational tasks, interact with APIs (like Google's services), or generate content. It is not designed to launch or interact with external applications like web browsers on a user's local machine or within its own virtualized environment for security and resource management reasons.
-
-Therefore, this tool is designed to be run **locally on your computer** where you have Google Chrome and the necessary Python environment set up, as demonstrated in the "Run Instructions" section.
 
 ## ⏱ Time Spent
 
@@ -174,3 +182,4 @@ pip install undetected_chromedriver
 
 # Run the automation
 python main.py
+```
