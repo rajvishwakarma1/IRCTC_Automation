@@ -1,0 +1,12 @@
+{
+  "name": "irctc-automation",
+  "version": "1.0.0",
+  "description": "IRCTC login automation with CAPTCHA solving",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "patchright": "^1.0.0"
+  }
+}
