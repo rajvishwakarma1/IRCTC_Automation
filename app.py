@@ -1,16 +1,18 @@
-import undetected_chromedriver as uc
-from time import sleep
-import random
-import json
+import asyncio
 import datetime
+import json
+import random
 import socket
-import signal
 import sys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import signal
 
-#Logging Setup-
+from patchright.async_api import async_playwright
+from ocr_utils import solve_captcha_with_ocr_space
+
+from PIL import Image
+from io import BytesIO
+
+#Logging Setup#
 def get_ip():
     try:
         return socket.gethostbyname(socket.gethostname())
@@ -23,7 +25,7 @@ def log_event(event, message, extra_data=None):
         "event": event,
         "message": message,
         "ip": get_ip(),
-        "profile_type": "default"
+        "profile_type": "patchright"
     }
     if extra_data:
         log_entry.update(extra_data)
@@ -38,168 +40,112 @@ def handle_exit(signum, frame):
 signal.signal(signal.SIGINT, handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
 
-#Begin Automation
-print("------------------------")
-log_event("session_start", "Session started.")
+#Automation Script#
+async def run():
+    log_event("session_start", "Session started.")
+    print("[DEBUG] Session started")
 
-options = uc.ChromeOptions()
-options.add_argument("--disable-blink-features=AutomationControlled")
-options.add_argument("--disable-infobars")
-options.add_argument("--disable-extensions")
-options.add_argument("--no-sandbox")
-options.add_argument("--start-maximized")
-options.add_argument("--incognito")
-options.add_argument("--disable-dev-shm-usage")
-options.add_argument("--disable-browser-side-navigation")
-options.add_argument("--disable-gpu")
-options.add_argument("--no-first-run")
-options.add_argument("--no-default-browser-check")
-options.add_argument("--lang=en-US")
-options.add_argument("--disable-background-networking")
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(
+            headless=False,
+            args=["--start-maximized"],
+            channel="chrome"
+        )
+        context = await browser.new_context(no_viewport=True)
+        page = await context.new_page()
 
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-options.add_argument(f"user-agent={user_agent}")
+        await page.goto("https://www.irctc.co.in/nget/train-search")
+        log_event("navigate", "Navigated to IRCTC website.")
+        print("[DEBUG] Navigated to IRCTC homepage")
+        await asyncio.sleep(random.uniform(5, 10))
 
-options.add_experimental_option("prefs", {
-    "profile.default_content_setting_values.notifications": 2,
-    "credentials_enable_service": False,
-    "profile.password_manager_enabled": False,
-    "autofill.profile_enabled": False
-})
+        try:
+            login_btn = await page.wait_for_selector("//a[@class='search_btn loginText ng-star-inserted']", timeout=15000)
+            await login_btn.click()
+            log_event("login_click", "Clicked on Login button.")
+            print("[DEBUG] Clicked Login button")
+            await asyncio.sleep(random.uniform(5, 7))
+        except Exception as e:
+            log_event("login_click_fail", f"Failed to click login: {e}")
+            print(f"[DEBUG] Login button error: {e}")
+            await browser.close()
+            return
 
-stealth_js = """
-    Object.defineProperty(navigator, 'plugins', {
-      get: () => [
-        {name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer'},
-        {name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer'},
-        {name: 'Native Client', filename: 'internal-nacl-plugin'}
-      ]
-    });
-    Object.defineProperty(navigator, 'languages', {
-      get: () => ['en-US', 'en']
-    });
-    Object.defineProperty(navigator, 'mimeTypes', {
-      get: () => [
-        {type: 'application/pdf', suffixes: 'pdf'},
-        {type: 'application/x-google-chrome-pdf', suffixes: 'pdf'},
-        {type: 'application/x-nacl', suffixes: 'nacl'}
-      ]
-    });
+        try:
+            username_field = await page.wait_for_selector('//input[@placeholder="User Name"]', timeout=10000)
+            for c in "rajvishwakarma303":
+                await username_field.type(c)
+                await asyncio.sleep(random.uniform(0.05, 0.15))
+            log_event("username_entered", "Username filled.")
+            print("[DEBUG] Username entered")
 
-    console.debug = () => {};
+            password_field = await page.wait_for_selector('//input[@placeholder="Password"]', timeout=10000)
+            for c in "Raj@321#":
+                await password_field.type(c)
+                await asyncio.sleep(random.uniform(0.05, 0.15))
+            log_event("password_entered", "Password filled.")
+            print("[DEBUG] Password entered")
 
-    Object.defineProperty(MediaDevices.prototype, 'getUserMedia', {
-      get: () => async (constraints) => {
-        throw new Error('NotAllowedError: Permission denied');
-      }
-    });
+            for attempt in range(3):
+                try:
+                    captcha_img = await page.wait_for_selector("xpath=/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[5]/div/app-captcha/div/div/div[2]/span[1]/img", timeout=10000)
 
-    Object.defineProperty(navigator, 'getBattery', {
-      get: () => async () => ({ charging: true, chargingTime: 0, dischargingTime: Infinity, level: 1 })
-    });
+                    img_bytes = await captcha_img.screenshot()
+                    image = Image.open(BytesIO(img_bytes)).convert("RGB")
 
-    const originalQuery = window.navigator.permissions.query;
-    window.navigator.permissions.query = (parameters) =>
-        (parameters.name === 'notifications' || parameters.name === 'geolocation') ?
-        Promise.resolve({ state: Notification.permission === 'granted' ? 'granted' : 'denied' }) :
-        originalQuery(parameters);
+                    captcha_input = await page.wait_for_selector('//input[@placeholder="Enter Captcha"]', timeout=5000)
 
-    const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
-    Element.prototype.getBoundingClientRect = function() {
-        const rect = originalGetBoundingClientRect.call(this);
-        return {
-            x: rect.x + Math.random() * 0.01 - 0.005,
-            y: rect.y + Math.random() * 0.01 - 0.005,
-            width: rect.width,
-            height: rect.height,
-            top: rect.top + Math.random() * 0.01 - 0.005,
-            right: rect.right + Math.random() * 0.01 - 0.005,
-            bottom: rect.bottom + Math.random() * 0.01 - 0.005,
-            left: rect.left + Math.random() * 0.01 - 0.005,
-        };
-    };
+                    captcha_text = solve_captcha_with_ocr_space(image, log_event)
+                    print(f"[DEBUG] Attempt {attempt+1} - CAPTCHA OCR Output: {captcha_text}")
 
-    const originalClick = Element.prototype.click;
-    Element.prototype.click = function() {
-        const delay = Math.random() * 100 + 50;
-        setTimeout(() => originalClick.call(this), delay);
-    };
+                    if captcha_text:
+                        await captcha_input.click()
+                        await asyncio.sleep(0.5)
+                        await captcha_input.fill("")
+                        for ch in captcha_text:
+                            await captcha_input.type(ch)
+                            await asyncio.sleep(random.uniform(0.1, 0.2))
 
-    console.log('undetected chromedriver 1337!');
-"""
+                        log_event("captcha_filled_auto", f"Filled CAPTCHA via OCR (Attempt {attempt+1})")
+                        print(f"[DEBUG] CAPTCHA filled via OCR (Attempt {attempt+1})")
 
-print("Initializing undetected_chromedriver...")
-try:
-    driver = uc.Chrome(options=options)
-    log_event("driver_init", "ChromeDriver initialized.")
-except Exception as e:
-    log_event("driver_error", f"Failed to initialize ChromeDriver: {e}")
-    exit()
+                        submit_btn = await page.wait_for_selector("xpath=/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/span/button", timeout=10000)
 
-print("Injecting stealth JavaScript...")
-driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": stealth_js})
+                        await submit_btn.click()
+                        log_event("sign_in_attempt", "Clicked Sign In button")
+                        print("[DEBUG] Clicked Sign In button")
+                        await asyncio.sleep(5)
 
-print("Navigating to IRCTC website...")
-driver.get('https://www.irctc.co.in/nget/train-search')
-log_event("navigate", "Navigated to IRCTC.")
+                        refreshed_img = await page.wait_for_selector('//img[contains(@src, "captcha")]', timeout=3000)
+                        if refreshed_img:
+                            new_src = await refreshed_img.get_attribute("src")
+                            if new_src != await captcha_img.get_attribute("src"):
+                                log_event("captcha_retry", f"CAPTCHA refreshed after submit (Attempt {attempt+1})")
+                                print(f"[DEBUG] CAPTCHA refresh detected. Retrying (Attempt {attempt+1})")
+                                continue
+                            else:
+                                break
+                    else:
+                        log_event("captcha_empty", f"OCR failed on attempt {attempt+1}")
+                        print(f"[DEBUG] OCR returned empty or invalid text (Attempt {attempt+1})")
+                except Exception as e:
+                    log_event("captcha_error", f"Error during CAPTCHA handling (Attempt {attempt+1}): {e}")
+                    print(f"[DEBUG] CAPTCHA error on attempt {attempt+1}: {e}")
+            else:
+                log_event("captcha_manual_required", "OCR failed 3 times. Manual CAPTCHA entry required.")
+                print("[DEBUG] CAPTCHA failed 3 times. Manual input may be needed.")
 
-sleep(random.uniform(5, 10))
+        except Exception as e:
+            log_event("form_fill_error", f"Form fill error: {e}")
+            print(f"[DEBUG] Form fill error: {e}")
+            await browser.close()
+            return
 
-print("Checking for notification pop-up...")
-try:
-    block_btn = WebDriverWait(driver, 7).until(
-        EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Block') or contains(@aria-label, 'Block') or contains(@class, 'mat-button') and contains(., 'No Thanks')]"))
-    )
-    driver.execute_script("arguments[0].click();", block_btn)
-    log_event("notification_dismissed", "Notification pop-up dismissed.")
-except Exception as e:
-    log_event("notification_skip", f"Popup not found or already dismissed: {e}")
+        print("--- Login flow complete. Keeping browser open ---")
+        await asyncio.sleep(180)
+        await browser.close()
+        log_event("session_end", "Session ended normally")
+        print("[DEBUG] Session ended and browser closed.")
 
-print("Attempting to click LOGIN button...")
-try:
-    login_button = WebDriverWait(driver, 30).until(
-        EC.element_to_be_clickable((By.XPATH, "//a[@class='search_btn loginText ng-star-inserted']"))
-    )
-    driver.execute_script("arguments[0].click();", login_button)
-    log_event("login_click", "Login button clicked.")
-    sleep(random.uniform(6, 9))
-except Exception as e:
-    log_event("login_click_fail", f"Login button click failed: {e}")
-    driver.quit()
-    exit()
-
-print("Filling in login form...")
-try:
-    username_field = WebDriverWait(driver, 15).until(
-        EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[2]/input'))
-    )
-    for char in 'Enter Username Here':
-        username_field.send_keys(char)
-        sleep(random.uniform(0.05, 0.2))
-    log_event("username_entered", "Username filled.")
-
-    password_field = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[3]/input'))
-    )
-    for char in 'Enter Password Here':
-        password_field.send_keys(char)
-        sleep(random.uniform(0.05, 0.2))
-    log_event("password_entered", "Password filled.")
-
-    captcha_input_field = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.XPATH, '/html/body/app-root/app-home/div[3]/app-login/p-dialog[1]/div/div/div[2]/div[2]/div/div[2]/div/div[2]/form/div[5]/div/app-captcha/div/div/input'))
-    )
-    log_event("captcha_detected", "CAPTCHA field detected. Awaiting manual fill.")
-
-    print("\n--- Automation complete. Username and Password entered. ---")
-    print("Please manually enter the CAPTCHA and click 'Sign In' in the browser window.")
-
-    while True:
-        input("\nAfter filling each CAPTCHA and clicking Sign In, press Enter here to log the event.")
-        log_event("captcha_filled", "CAPTCHA submitted manually by user.")
-
-except Exception as e:
-    log_event("form_fill_error", f"Error during form fill: {e}")
-    driver.quit()
-    log_event("session_terminated", "Session ended with error.", {"reason": "form_fill_error"})
-    exit()
+if __name__ == "__main__":
+    asyncio.run(run())
