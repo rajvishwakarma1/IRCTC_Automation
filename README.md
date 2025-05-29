@@ -5,11 +5,8 @@ This repository contains a Python-based automation tool designed to assist with 
 ## 🛠 Tools Used
 
 * **Python 3.7+**
-
 * **Selenium WebDriver**
-
 * **undetected_chromedriver** (for enhanced anti-detection capabilities)
-
 * **Google Chrome + ChromeDriver**
 
 ## 📺 Demo
@@ -23,27 +20,20 @@ The automation aims to simulate a user's initial interaction with the IRCTC logi
 ### Browser Launch & Setup
 
 * The script leverages `undetected_chromedriver` to launch Google Chrome, which is specifically designed to bypass common Selenium detection methods.
-
 * Chrome is launched in **incognito mode** to ensure a clean session without pre-existing cookies or cached data.
-
 * The browser window is automatically maximized, and various Chrome options (e.g., disabling infobars, extensions, background networking) are applied to further minimize detection risks.
-
 * A realistic user agent string is employed, and subtle JavaScript injections are executed on new document loads to spoof browser properties (like `navigator.plugins`, `navigator.languages`, `window.chrome` properties, `getBattery`, `getUserMedia`, and `Permissions.query`) and introduce randomized delays in DOM interactions (like `getBoundingClientRect` and `click` events), making the automated session appear more human-like.
 
 ### Navigate to Login Page
 
 * The browser automatically directs to the IRCTC homepage.
-
 * The script intelligently waits for the "Login" button to become clickable before initiating the click action using JavaScript for robustness.
 
 ### Login & CAPTCHA Handling (Hybrid Approach)
 
 * IRCTC utilizes a complex and dynamic CAPTCHA mechanism that **cannot be programmatically solved** by automation tools due to its inherent complexity, legal considerations, and active anti-bot measures.
-
 * The script will **automatically input your username and password** into the respective fields in the login modal.
-
 * **After filling the credentials, the script will pause indefinitely (for 1 hour) and keep the browser open.** At this point, the user is prompted to **manually input the CAPTCHA** displayed in the browser window and then **manually click the "SIGN IN" button.**
-
 * **Important:** If IRCTC presents *additional* CAPTCHAs or verification steps after the first "SIGN IN" attempt, these will also need to be solved manually by the user.
 
 ### Post-Login Actions (Manual)
@@ -57,7 +47,6 @@ The automation aims to simulate a user's initial interaction with the IRCTC logi
 ### Error Handling & Logging
 
 * In the event of any operational error during the automated steps (such as an element not being found or a timeout), a relevant message is printed to the terminal.
-
 * Comprehensive logs are maintained in the terminal throughout the process to aid in debugging and verifying the automation's behavior.
 
 ### Graceful Cleanup
@@ -72,73 +61,137 @@ This tool employs several techniques to minimize the chances of being detected b
 
 * **Chrome Options Configuration:**
 
-  * **`--disable-blink-features=AutomationControlled`**: Explicitly tells Chrome to disable features that reveal automation.
+  * `--disable-blink-features=AutomationControlled`
+  * `--disable-infobars`
+  * `--disable-extensions`
+  * `--no-sandbox`
+  * `--start-maximized`
+  * `--incognito`
+  * `--disable-dev-shm-usage`
+  * `--disable-browser-side-navigation`
+  * `--disable-gpu`
+  * `--no-first-run` & `--no-default-browser-check`
+  * `--lang=en-US`
+  * `--disable-background-networking`
 
-  * **`--disable-infobars`**: Removes the "Chrome is being controlled by automated test software" bar.
+* **Realistic User-Agent**: A common, up-to-date user-agent string is explicitly set to mimic a standard browser.
 
-  * **`--disable-extensions`**: Prevents extensions from loading, which can sometimes be a detection point.
+* **Experimental Preferences (`prefs`)**: Blocks notifications, disables password saving prompts, and autofill features.
 
-  * **`--no-sandbox`**: Disables the sandbox, often used in containerized environments.
-
-  * **`--start-maximized`**: Ensures the browser window starts maximized, providing consistent window dimensions.
-
-  * **`--incognito`**: Launches the browser in incognito mode for a clean session state, free from previous cookies or cache.
-
-  * **`--disable-dev-shm-usage`**: Addresses potential issues with shared memory in Linux environments.
-
-  * **`--disable-browser-side-navigation`**: Can help with certain Single Page Application (SPA) navigation patterns.
-
-  * **`--disable-gpu`**: May alter WebGL fingerprinting, though it can impact rendering performance.
-
-  * **`--no-first-run` & `--no-default-browser-check`**: Suppress initial browser setup and default browser prompts.
-
-  * **`--lang=en-US`**: Sets a consistent browser language.
-
-  * **`--disable-background-networking`**: Disables background network activity that might be atypical for a human user.
-
-  * **Realistic User-Agent**: A common, up-to-date user-agent string is explicitly set to mimic a standard browser.
-
-  * **Experimental Preferences (`prefs`):** Configures Chrome preferences to block notifications, disable password saving prompts, and autofill features.
-
-* **JavaScript Injections (`Page.addScriptToEvaluateOnNewDocument`):** Custom JavaScript is injected into every new document loaded to further spoof browser properties and behaviors:
-
-  * **`navigator.plugins`, `navigator.languages`, `navigator.mimeTypes`**: These properties are spoofed to contain values consistent with a regular browser.
-
-  * **`console.debug`**: Overwritten to prevent logging of potential automation markers.
-
-  * **`MediaDevices.prototype.getUserMedia`**: Overridden to prevent detection from attempts to access microphone/camera.
-
-  * **`navigator.getBattery`**: Spoofed to return a consistent battery status.
-
-  * **`Permissions.query`**: Spoofed to return consistent permission states (e.g., for notifications, geolocation).
-
-  * **Behavioral Spoofing**: Subtle random variations are introduced to `Element.prototype.getBoundingClientRect` (for element position readings) and `Element.prototype.click` (for click event delays) to make interactions less robotic.
+* **JavaScript Injections**: Custom JS is injected to spoof:
+  * `navigator.plugins`, `navigator.languages`, `navigator.mimeTypes`
+  * `console.debug`, `getUserMedia`, `getBattery`, `Permissions.query`
+  * `getBoundingClientRect` (introduces randomness)
+  * `click` (adds delay before clicking)
 
 ## 🗂 Logging & Monitoring
 
 The tool now supports **session logging** in a structured `.jsonl` format (`session_logs.jsonl`) with these key features:
 
 ### ✅ Logged Events
+
 * Driver/browser launch and exit
 * Navigation to IRCTC
 * Login modal interaction
 * Username/password input
 * Manual CAPTCHA fill events
 * Browser closure (user-initiated or via script)
-* IP address of the session
+* IP address and profile type per session
 
 ### 📌 Log Format
-Each entry includes:
 
 ```json
-{ "timestamp": "2025-05-28T12:34:56", "event": "captcha_filled", "message": "User manually filled captcha", "ip": "123.45.67.89" }
+{
+  "timestamp": "2025-05-28T12:34:56",
+  "event": "captcha_filled",
+  "message": "User manually filled captcha",
+  "ip": "123.45.67.89",
+  "profile_type": "default"
+}
 ```
 
 ### 📎 Additional Features
 * IP detection for each session
 * Detects if the user closes the browser manually
-* Logs every time the CAPTCHA is filled
-* Adds `------------------------` line between sessions for clarity
+* Logs every CAPTCHA interaction
+* Includes `------------------------` divider between sessions
+
+## 📊 New: Enhanced Logging & Analytics (May 2025 Update)
+
+This major update adds complete tracking and post-session analysis functionality to the automation.
+
+### ✅ Structured Logging
+All session events are recorded in `session_logs.jsonl`, one JSON object per line.
+
+**Logged Events Include:**
+* `session_start`
+* `captcha_detected`
+* `captcha_filled`
+* `captcha_loop_detected`
+* `session_terminated` (with reason: `user_closed` or `normal`)
+* IP and profile type
+
+**Sample:**
+```json
+{
+  "timestamp": "2025-05-28T12:34:56",
+  "event": "session_terminated",
+  "reason": "user_closed",
+  "ip": "192.168.1.100",
+  "profile_type": "default"
+}
+```
+
+### 📈 Log Analytics
+You can analyze historical session logs using the `analyze_logs.py` script.
+
+**Key Metrics (Grouped by IP + Profile):**
+* Total sessions
+* Sessions manually closed
+* CAPTCHAs prompted vs filled
+* CAPTCHA solve rate (filled / prompted)
+* CAPTCHA loop rate
+* Average session duration (seconds)
+
+**Example Output:**
+```yaml
+Session Group: 192.168.1.7 | default
+  Total Sessions:        1
+  User Closed Early:     1
+  CAPTCHA Prompted:      1
+  CAPTCHA Filled:        8
+  CAPTCHA Loops Found:   0
+  CAPTCHA Solve Rate:    800.0%
+  CAPTCHA Loop Rate:     0.0%
+  Avg. Session Duration: 59.25 sec
+----------------------------------------
+```
+
+### 📤 CSV Export
+All summary metrics are saved to:
+```
+session_report.csv
+```
+
+This CSV includes:
+* `ip`
+* `profile_type`
+* `total_sessions`
+* `user_closed`
+* `captcha_prompted`
+* `captcha_filled`
+* `captcha_loops`
+* `captcha_solve_rate`
+* `captcha_loop_rate`
+* `avg_session_duration`
+
+### 📁 New Files Introduced
+
+| File | Description |
+|------|-------------|
+| `session_logs.jsonl` | Raw session logs in structured JSON format |
+| `analyze_logs.py` | Parses logs, prints report, exports CSV |
+| `session_report.csv` | CSV output of session summary report |
 
 ## ❌ Challenges and Limitations (Why Full Automation Was Not Achieved)
 
@@ -170,6 +223,7 @@ Approximately 6+ hours were dedicated to the development and refinement of this 
 
 To execute this automation tool, follow these steps:
 
+### Run the automation tool:
 ```bash
 # Clone the repository (replace <repository-url> with your actual repo URL)
 git clone <repository-url>
@@ -182,4 +236,9 @@ pip install undetected_chromedriver
 
 # Run the automation
 python main.py
+```
+
+### Run the analytics tool:
+```bash
+python analyze_logs.py
 ```
