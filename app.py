@@ -73,14 +73,14 @@ async def run():
 
         try:
             username_field = await page.wait_for_selector('//input[@placeholder="User Name"]', timeout=10000)
-            for c in "rajvishwakarma303":
+            for c in "Enter Your Username":
                 await username_field.type(c)
                 await asyncio.sleep(random.uniform(0.05, 0.15))
             log_event("username_entered", "Username filled.")
             print("[DEBUG] Username entered")
 
             password_field = await page.wait_for_selector('//input[@placeholder="Password"]', timeout=10000)
-            for c in "Raj@321#":
+            for c in "Enter Your Password":
                 await password_field.type(c)
                 await asyncio.sleep(random.uniform(0.05, 0.15))
             log_event("password_entered", "Password filled.")
